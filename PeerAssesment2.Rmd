@@ -1,0 +1,118 @@
+---
+title: 'Reproducible Research: Peer Assessment 2'
+output:
+  pdf_document: default
+  html_document:
+    keep_md: yes
+---
+
+## Synopsis
+After loading the data, we only subset the data we need like the data related to population health and property damage with crop damage. Then we sum up the result corresponding to the specific event type. In the damage data set, we need to take the exponent part into consideration. In order to better view the result, we sort the data descending and plot the first 10 result. From the data, we can see that across the United States, TORNADO is the most harmful with respect to population health, while FLOOD causes the most property damage and DRAUGHT causes the most crop damage.
+
+```{r setoptions, echo = TRUE, cache = TRUE}
+
+```
+
+## Data Loading
+
+```{r Process-data, cache = TRUE}
+# read csv
+stormData <- read.csv("StormData/repdata-data-StormData.csv")
+# show names to get a basic understanding 
+names(stormData)
+```
+
+## Population health
+```{r populationHealth}
+# subset data for population health
+populationHealthData <- stormData[, c("EVTYPE", "FATALITIES", "INJURIES")]
+# convert factor to integer for later aggregation
+populationHealthData$FATALITIES <- as.integer(populationHealthData$FATALITIES)
+populationHealthData$INJURIES <- as.integer(populationHealthData$INJURIES)
+# sum up the result and show 
+populationHealthResult <- aggregate(cbind(INJURIES, FATALITIES) ~ EVTYPE, data = populationHealthData, sum)
+head(populationHealthResult)
+
+# sort the data and show
+sortedFatalityResult <- populationHealthResult[order(-populationHealthResult$FATALITIES), ]
+head(sortedFatalityResult)
+
+sortedInjuryResult <- populationHealthResult[order(-populationHealthResult$INJURIES), ]
+head(sortedInjuryResult)
+
+# plot the sorted result
+par(mfrow = c(1,2), mar = c(10, 4, 3, 2))
+barplot(sortedFatalityResult$FATALITIES[1:10], names.arg = sortedFatalityResult$EVTYPE[1:10], las = 3, ylab = "Fatalities", main = "10 greatest causes of fatalities")
+barplot(sortedInjuryResult$INJURIES[1:10], names.arg = sortedInjuryResult$EVTYPE[1:10], las = 3, ylab = "Injuries", main = "10 greatest causes of injuries")
+```
+
+From the plot, we can see that across the United States, TORNADO is the most harmful with respect to population health.
+
+## Economic consequences
+```{r}
+# show names
+names(stormData)
+# subset data for economic consequences
+economicData <- stormData[, c("EVTYPE", "PROPDMG", "PROPDMGEXP","CROPDMG", "CROPDMGEXP")]
+# convert factor to integer for later aggregation
+economicData$PROPDMG <- as.numeric(economicData$PROPDMG)
+economicData$CROPDMG <- as.numeric(economicData$CROPDMG)
+
+head(economicData)
+# deal with exponent
+unique(economicData$PROPDMGEXP)
+
+economicData$PROPEXP[economicData$PROPDMGEXP == "K"] <- 1000
+economicData$PROPEXP[economicData$PROPDMGEXP == "M"] <- 1e+06
+economicData$PROPEXP[economicData$PROPDMGEXP == ""] <- 1
+economicData$PROPEXP[economicData$PROPDMGEXP == "B"] <- 1e+09
+economicData$PROPEXP[economicData$PROPDMGEXP == "m"] <- 1e+06
+economicData$PROPEXP[economicData$PROPDMGEXP == "+"] <- 0
+economicData$PROPEXP[economicData$PROPDMGEXP == "0"] <- 1
+economicData$PROPEXP[economicData$PROPDMGEXP == "5"] <- 1e+05
+economicData$PROPEXP[economicData$PROPDMGEXP == "6"] <- 1e+06
+economicData$PROPEXP[economicData$PROPDMGEXP == "?"] <- 0
+economicData$PROPEXP[economicData$PROPDMGEXP == "4"] <- 1e+04
+economicData$PROPEXP[economicData$PROPDMGEXP == "2"] <- 1e+02
+economicData$PROPEXP[economicData$PROPDMGEXP == "3"] <- 1e+03
+economicData$PROPEXP[economicData$PROPDMGEXP == "h"] <- 1e+02
+economicData$PROPEXP[economicData$PROPDMGEXP == "7"] <- 1e+07
+economicData$PROPEXP[economicData$PROPDMGEXP == "H"] <- 1e+02
+economicData$PROPEXP[economicData$PROPDMGEXP == "-"] <- 0
+economicData$PROPEXP[economicData$PROPDMGEXP == "1"] <- 1e+01
+economicData$PROPEXP[economicData$PROPDMGEXP == "8"] <- 1e+08
+    
+unique(economicData$CROPDMGEXP)
+
+economicData$CROPEXP[economicData$CROPDMGEXP == ""] <- 1
+economicData$CROPEXP[economicData$CROPDMGEXP == "M"] <- 1e+06
+economicData$CROPEXP[economicData$CROPDMGEXP == "k"] <- 1e+03
+economicData$CROPEXP[economicData$CROPDMGEXP == "m"] <- 1e+06
+economicData$CROPEXP[economicData$CROPDMGEXP == "B"] <- 1e+09
+economicData$CROPEXP[economicData$CROPDMGEXP == "?"] <- 0
+economicData$CROPEXP[economicData$CROPDMGEXP == "0"] <- 1
+economicData$CROPEXP[economicData$CROPDMGEXP == "k"] <- 1e+03
+economicData$CROPEXP[economicData$CROPDMGEXP == "2"] <- 1e+02
+
+# Compute the value
+economicData$PROPDMGVALUE <- economicData$PROPDMG * economicData$PROPEXP
+economicData$CROPDMGVALUE <- economicData$CROPDMG * economicData$CROPEXP
+
+head(economicData)
+# sum up the result and show 
+economicResult <- aggregate(cbind(PROPDMGVALUE, CROPDMGVALUE) ~ EVTYPE, data = economicData, sum)
+head(economicResult)
+
+# sort the data and show
+sortedPropResult <- economicResult[order(-economicResult$PROPDMGVALUE), ]
+head(sortedPropResult)
+
+sortedCropResult <- economicResult[order(-economicResult$CROPDMGVALUE), ]
+head(sortedCropResult)
+# plot the sorted result
+par(mfrow = c(1,2), mar = c(10, 4, 3, 2))
+barplot(sortedPropResult$PROPDMGVALUE[1:10], names.arg = sortedPropResult$EVTYPE[1:10], las = 3, ylab = "PROPDMG", main = "10 greatest causes of PROPDMG")
+barplot(sortedCropResult$CROPDMGVALUE[1:10], names.arg = sortedCropResult$EVTYPE[1:10], las = 3, ylab = "CROPDMG", main = "10 greatest causes of CROPDMG")
+```
+
+From the plot, we can see FLOOD causes the most property damage and DRAUGHT causes the most crop damage.
